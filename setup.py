@@ -26,7 +26,7 @@ setup(
     name='loggerglue',
     version=get_version(),
     description='Syslog protocol (rfc5424 and rfc5425) utilities',
-    long_description=read_file('README.rst') + '\n\n' + read_file('CHANGES.rst'),
+    long_description=read_file('README.rst') + '\n\n' + read_file('CHANGES.txt'),
     author='Evax Software',
     author_email='contact@evax.fr',
     url='http://www.evax.fr/',

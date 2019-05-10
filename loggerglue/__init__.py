@@ -3,4 +3,4 @@
 loggerglue © 2011 Evax Software <contact@evax.fr>
 """
 
-VERSION = (1, 1, 0)
+VERSION = (1, 1, 1)

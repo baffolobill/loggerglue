@@ -7,12 +7,16 @@ Copyright © 2011 Evax Software <contact@evax.fr>
 
 import calendar
 from datetime import datetime
-from pyparsing import Word, Regex, Group, White, Combine, CharsNotIn, \
-    ZeroOrMore, OneOrMore, QuotedString, Or, Optional, LineStart, LineEnd, \
+from pyparsing import (
+    Word, Regex, Group, White, Combine, CharsNotIn,
+    ZeroOrMore, OneOrMore, QuotedString, Or, Optional, LineStart, LineEnd,
     printables
+)
+
 from loggerglue.util.MultiDict import OrderedMultiDict
 from loggerglue.util.escape_value import escape_param_value, str_or_nil
 from loggerglue.util.parse_timestamp import parse_timestamp
+
 
 # Support SYSLOG_SyslogProtocol23Format which can send an empty APP-NAME.
 SUPPORT_MISSING_VALUES = True
@@ -46,8 +50,7 @@ time_hour = Regex('0[0-9]|1[0-9]|2[0-3]')
 time_minute = Regex('[0-5][0-9]')
 time_second = time_minute
 time_secfrac = Regex('\.[0-9]{1,6}')
-time_numoffset = Or([Regex('\+'), Regex('-')]) + \
-                 time_hour + ':' + time_minute
+time_numoffset = Or([Regex('\+'), Regex('-')]) + time_hour + ':' + time_minute
 time_offset = Or([Regex('Z'), time_numoffset])
 partial_time = time_hour + ':' + time_minute + ':' + time_second + \
                Optional(time_secfrac)
@@ -80,16 +83,18 @@ pri = "<" + prival + ">"
 header = pri + version + sp + timestamp + sp + hostname + sp + \
          app_name + sp + procid + sp + msgid
 syslog_msg = LineStart() + header + structured_data + \
-             Optional(sp+msg) + LineEnd()
+             Optional(sp + msg) + LineEnd()
 
 # Default Prival for new SyslogEntry instances
-from constants import LOG_INFO,LOG_USER
-DEFAULT_PRIVAL = LOG_INFO|LOG_USER
+from loggerglue.constants import LOG_INFO, LOG_USER
+DEFAULT_PRIVAL = LOG_INFO | LOG_USER
+
 
 class Params(object):
     def __init__(self, d):
         for k, v in d.items():
             setattr(self, k, v)
+
 
 class SDElement(object):
     """
@@ -129,8 +134,8 @@ class SDElement(object):
     def __str__(self):
         """Convert SDElement to formatted string"""
         rv = ['[', self.id]
-        for (k,v) in self.sd_params.allitems():
-            rv += [' ',k,'="',escape_param_value(unicode(v)),'"']
+        for (k, v) in self.sd_params.allitems():
+            rv += [' ', k, '="', escape_param_value(str(v)), '"']
         rv += [']']
         return ''.join(rv)
 
@@ -139,12 +144,21 @@ class SDElement(object):
         sd = getattr(parsed, 'STRUCTURED_DATA', None)
         if sd is None or sd == '-':
             return None
+
+        # Don't know what is changed in py3 version, but according to unittest
+        # it returns non-string value.
+        if list(sd) == ['-']:
+            return None
+
         sd_id = parsed.STRUCTURED_DATA.SD_ID
         params = OrderedMultiDict()
         for i in parsed.STRUCTURED_DATA.SD_PARAMS:
-            params[i.SD_PARAM.SD_PARAM_NAME] = \
-                    i.SD_PARAM.SD_PARAM_VALUE.decode('utf-8')
+            value = i.SD_PARAM.SD_PARAM_VALUE
+            if isinstance(value, bytes):
+                value = value.decode('utf-8')
+            params[i.SD_PARAM.SD_PARAM_NAME] = value
         return StructuredData(sd_id, params)
+
 
 class StructuredData(object):
     def __init__(self, elements):
@@ -159,13 +173,21 @@ class StructuredData(object):
         sd = getattr(parsed, 'STRUCTURED_DATA', None)
         if sd is None or sd == '-':
             return None
+        
+        # Don't know what is changed in py3 version, but according to unittest
+        # it returns non-string value.
+        if list(sd) == ['-']:
+            return None
+
         elements = []
         for se in parsed.SD_ELEMENTS:
             sd_id = se.SD_ID
             params = OrderedMultiDict()
             for i in se.SD_PARAMS:
-                params[i.SD_PARAM.SD_PARAM_NAME] = \
-                        i.SD_PARAM.SD_PARAM_VALUE.decode('utf-8')
+                value = i.SD_PARAM.SD_PARAM_VALUE
+                if isinstance(value, bytes):
+                    value = value.decode('utf-8')
+                params[i.SD_PARAM.SD_PARAM_NAME] = value
             elements.append(SDElement(sd_id, params))
         return StructuredData(elements)
 
@@ -175,14 +197,15 @@ class StructuredData(object):
         try:
             r = structured_data.parseString(line)
             return cls.parse(r)
-        except Exception, e:
+        except Exception as e:
             if consume_error:
-                print e
+                print(e)
                 import sys, traceback
                 traceback.print_exc(file=sys.stdout)
                 return None
             else:
                 raise
+
 
 class SyslogEntry(object):
     """
@@ -251,30 +274,36 @@ class SyslogEntry(object):
         else:
             timestamp = ts
         attr = {}
-        for i in ('prival', 'version', 'hostname', 'app_name',
-                  'procid', 'msgid'):
+        for i in ('prival', 'version', 'hostname', 'app_name', 'procid', 'msgid'):
             I = i.upper()
             v = getattr(parsed, I, '-')
             if v in ["", "-"]:
                 v = None
             else:
-                v = v.decode('utf-8')
+                if isinstance(v, bytes):
+                    v = v.decode('utf-8')
             attr[i] = v
         m = getattr(parsed, 'MSG', None)
         if m is not None:
             if m.startswith(BOM):
                 msg = m[3:].decode('utf-8')
             else:
-                msg = unicode(m)
+                msg = str(m)
         else:
             msg = None
         version = int(attr['version'])
         prival = int(attr['prival'])
         structured_data = StructuredData.parse(parsed)
         return cls(
-            prival=prival, version=version, timestamp=timestamp,
-            hostname=attr['hostname'], app_name=attr['app_name'], procid=attr['procid'], msgid=attr['msgid'],
-            structured_data=structured_data, msg=msg
+            prival=prival, 
+            version=version, 
+            timestamp=timestamp,
+            hostname=attr['hostname'], 
+            app_name=attr['app_name'], 
+            procid=attr['procid'], 
+            msgid=attr['msgid'],
+            structured_data=structured_data, 
+            msg=msg
         )
 
     def __str__(self):
@@ -288,13 +317,23 @@ class SyslogEntry(object):
             rv.append(repr(t))
         else:
             rv.append(self.timestamp.strftime("%Y-%m-%dT%H:%M:%S.%fZ"))
-        rv += [' ',
-               str_or_nil(self.hostname), ' ', str_or_nil(self.app_name), ' ', str_or_nil(self.procid), ' ',
-               str_or_nil(self.msgid),    ' ', str_or_nil(self.structured_data)]
+
+        rv += [
+            ' ',
+            str_or_nil(self.hostname), 
+            ' ', 
+            str_or_nil(self.app_name), 
+            ' ', 
+            str_or_nil(self.procid), 
+            ' ',
+            str_or_nil(self.msgid),
+            ' ', 
+            str_or_nil(self.structured_data)
+        ]
         if self.msg is not None:
             rv += [' ']
-            if type(self.msg) is unicode:
-                rv += [BOM, self.msg.encode('utf-8')]
+            if isinstance(self.msg, bytes):
+                rv += [BOM, self.msg.decode('utf-8')]
             else:
                 rv += [self.msg]
         return ''.join(rv)
@@ -305,12 +344,11 @@ class SyslogEntry(object):
         try:
             r = syslog_msg.parseString(line.strip())
             return cls.parse(r)
-        except Exception, e:
+        except Exception as e:
             if consume_error:
-                print e
+                print(e)
                 import sys, traceback
                 traceback.print_exc(file=sys.stdout)
                 return None
             else:
                 raise
-

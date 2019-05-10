@@ -1,21 +1,28 @@
 import unittest
+from datetime import datetime
 from pyparsing import ParseException
-from loggerglue.rfc5424 import *
+
+from loggerglue.rfc5424 import (
+    syslog_msg, SyslogEntry, SDElement, StructuredData
+)
+from loggerglue.util.MultiDict import OrderedMultiDict
+
 
 valids = (
-        """<34>1 2003-10-11T22:14:15.003Z mymachine.example.com su - ID47 - \xef\xbb\xbf'su root' failed for lonvick on /dev/pts/8""",
-        """<165>1 2003-08-24T05:14:15.000003-07:00 192.0.2.1 myproc 8710 - - %% It's time to make the do-nuts.""",
-        """<165>1 2003-10-11T22:14:15.003Z mymachine.example.com evntslog - ID47 [exampleSDID@32473 iut="3" eventSource="Application" eventID="1011"] \xef\xbb\xbfAn application event log entry...""",
-        """<165>1 2003-10-11T22:14:15.003Z mymachine.example.com evntslog - ID47 [exampleSDID@32473 iut="3" eventSource="Application" eventID="1011"][examplePriority@32473 class="high"]""",
-        """<165>1 2003-10-11T22:14:15.003Z mymachine.example.com evntslog - ID47 [traceback@32473 file="main.py" line="123" method="runStuff" file="pinger.py" line="456" method="pingpong"]""",
-        """<34>1 2003-10-11T22:14:15.003000Z mymachine.example.com su - ID47 [test@32473 escaped="\\"nS\\]t\\\u\n"] \xef\xbb\xbf'su root' failed\n for lonvick on /dev/pts/8""",
-        """<165>1 2003-10-11T22:14:15.003000Z mymachine.example.com evntslog - ID47 [exampleSDID@32473 iut="3" eventSource="Application" eventID="1011"] \xef\xbb\xbfAn application event log entry...""",
-        """<78>1 2011-03-20T12:00:01+01:00 mymachine.example.com - 9778 - - (orion) CMD (/home/www/stats/pinger.py /home/www/stats/data/pinger.pickle)""",
-        )
+    """<34>1 2003-10-11T22:14:15.003Z mymachine.example.com su - ID47 - \xef\xbb\xbf'su root' failed for lonvick on /dev/pts/8""",
+    """<165>1 2003-08-24T05:14:15.000003-07:00 192.0.2.1 myproc 8710 - - %% It's time to make the do-nuts.""",
+    """<165>1 2003-10-11T22:14:15.003Z mymachine.example.com evntslog - ID47 [exampleSDID@32473 iut="3" eventSource="Application" eventID="1011"] \xef\xbb\xbfAn application event log entry...""",
+    """<165>1 2003-10-11T22:14:15.003Z mymachine.example.com evntslog - ID47 [exampleSDID@32473 iut="3" eventSource="Application" eventID="1011"][examplePriority@32473 class="high"]""",
+    """<165>1 2003-10-11T22:14:15.003Z mymachine.example.com evntslog - ID47 [traceback@32473 file="main.py" line="123" method="runStuff" file="pinger.py" line="456" method="pingpong"]""",
+    """<34>1 2003-10-11T22:14:15.003000Z mymachine.example.com su - ID47 [test@32473 escaped="\\"nS\\]t\\u\n"] \xef\xbb\xbf'su root' failed\n for lonvick on /dev/pts/8""",
+    """<165>1 2003-10-11T22:14:15.003000Z mymachine.example.com evntslog - ID47 [exampleSDID@32473 iut="3" eventSource="Application" eventID="1011"] \xef\xbb\xbfAn application event log entry...""",
+    """<78>1 2011-03-20T12:00:01+01:00 mymachine.example.com - 9778 - - (orion) CMD (/home/www/stats/pinger.py /home/www/stats/data/pinger.pickle)""",
+    )
 
 invalids = (
-        """This is obviously invalid.""",
-        )
+    """This is obviously invalid.""",
+    )
+
 
 class TestABNF(unittest.TestCase):
     def test_valids(self):
@@ -26,7 +33,7 @@ class TestABNF(unittest.TestCase):
         for i in invalids:
             self.assertRaises(ParseException, syslog_msg.parseString, i)
 
-    def test_details(self):
+    def test_details_0(self):
         r = syslog_msg.parseString(valids[0])
         self.assertEqual(r.PRIVAL, '34')
         self.assertEqual(r.VERSION, '1')
@@ -34,11 +41,16 @@ class TestABNF(unittest.TestCase):
         self.assertEqual(r.HOSTNAME, 'mymachine.example.com')
         self.assertEqual(r.APP_NAME, 'su')
         self.assertEqual(r.PROCID, '-')
-        self.assertEqual(r.STRUCTURED_DATA, '-')
+
+        self.assertEqual(list(r.STRUCTURED_DATA), ['-'])
         self.assertEqual(r.MSG,
                 "\xef\xbb\xbf'su root' failed for lonvick on /dev/pts/8")
+
+    def test_details_2(self):
         r = syslog_msg.parseString(valids[2])
         self.assertTrue(hasattr(r.STRUCTURED_DATA, 'SD_ID'))
+
+    def test_details_3(self):
         r = syslog_msg.parseString(valids[3])
         self.assertEqual(len(r.SD_ELEMENTS), 2)
         self.assertEqual(len(r.SD_ELEMENTS[0].SD_PARAMS), 3)

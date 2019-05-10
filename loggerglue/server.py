@@ -4,10 +4,14 @@ An rfc5424/rfc5425 syslog server implementation
 Copyright © 2011 Evax Software <contact@evax.fr>
 """
 import ssl
-import SocketServer
+from socketserver import (
+    BaseRequestHandler, TCPServer, ThreadingMixIn
+)
+
 from loggerglue.rfc5424 import SyslogEntry
 
-class SyslogHandler(SocketServer.BaseRequestHandler):
+
+class SyslogHandler(BaseRequestHandler):
     """
     Handler for syslog connections. An instance of this class is created for each incoming connection.
 
@@ -40,6 +44,7 @@ class SyslogHandler(SocketServer.BaseRequestHandler):
             r = self.request.recv(1)
             if not r:
                 break # EOF
+            r = r.decode('utf-8')
             if r != ' ':
                 buf += r
             else:
@@ -49,8 +54,8 @@ class SyslogHandler(SocketServer.BaseRequestHandler):
                     # Protocol error
                     return
                 buf = ''
-                for i in xrange(msg_len):
-                    buf += self.request.recv(1)
+                for i in range(msg_len):
+                    buf += self.request.recv(1).decode('utf-8')
                 syslog_entry = SyslogEntry.from_line(buf)
                 buf = ''
                 if syslog_entry is None:
@@ -60,7 +65,7 @@ class SyslogHandler(SocketServer.BaseRequestHandler):
     def handle_entry(self, syslog_entry):
         """Handle an incoming syslog entry. Subclasses must implement this.
         """
-        raise NotImplemented('Subclasses must implement this method')
+        raise NotImplementedError('Subclasses must implement this method')
 
     def handle_error(self, data):
         """Handle an error. Subclasses can implemnt this.
@@ -69,9 +74,10 @@ class SyslogHandler(SocketServer.BaseRequestHandler):
         """
         pass
 
-class SyslogServer(SocketServer.TCPServer, SocketServer.ThreadingMixIn):
+
+class SyslogServer(TCPServer, ThreadingMixIn):
     """
-    TCP Syslog server based on SocketServer.
+    TCP Syslog server based on socketserver.
     """
     allow_reuse_address = True
 
@@ -101,12 +107,10 @@ class SyslogServer(SocketServer.TCPServer, SocketServer.ThreadingMixIn):
         if ssl_args:
             for arg in ssl_args:
                 if arg not in self._allowed_ssl_args:
-                    raise TypeError('unexpected keyword argument: %s' %arg)
+                    raise TypeError('unexpected keyword argument: %s' % arg)
             self.ssl_args = ssl_args
             self.use_tls = True
-        SocketServer.TCPServer.__init__(self, server_address,
-                                        RequestHandlerClass,
-                                        bind_and_activate)
+        super().__init__(server_address, RequestHandlerClass, bind_and_activate)
 
     def get_request(self):
         conn, addr = self.socket.accept()
@@ -114,4 +118,3 @@ class SyslogServer(SocketServer.TCPServer, SocketServer.ThreadingMixIn):
             conn = ssl.wrap_socket(conn, server_side=True,
                                    **self.ssl_args)
         return (conn, addr)
-

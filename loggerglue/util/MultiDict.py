@@ -1,4 +1,5 @@
-"""Dictionary-like objects which allow multiple keys
+"""
+Dictionary-like objects which allow multiple keys
 
 Python dictionaries map a key to a value.  Duplicate keys are not
 allowed, and new entries replace old ones with the same key.  Order is
@@ -67,8 +68,6 @@ The latest version of this code can be found at
 # This software has been released to the public domain.  No
 # copyright is asserted.
 
-from __future__ import generators
-
 # Implementation inheritence -- not asserting a class hierarchy here
 #
 # If there is a class hierarchy, OrderedMultiDict is a child of
@@ -88,6 +87,7 @@ class _BaseMultiDict:
         for k in self.data:
             d[k] = self.data[k][-1]
         return str(d)
+
     def __len__(self):
         """the number of unique keys"""
         return len(self.data)
@@ -297,10 +297,11 @@ __test__ = {
   "__doc__": __doc__,
 }
 
+
 def _test():
     import doctest, MultiDict
     return doctest.testmod(MultiDict)
 
+
 if __name__ == "__main__":
     _test()
-

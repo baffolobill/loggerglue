@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+
 def parse_date(ts):
     '''
     Parse syslog date with optional sub-second precision.
@@ -8,6 +9,7 @@ def parse_date(ts):
         return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S.%f")
     else:
         return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S")
+
 
 def parse_timestamp(ts):
     '''

@@ -1,6 +1,8 @@
 import re
 
+
 escape_re = re.compile(r'([\"\\\]])')
+
 
 def escape_param_value(s):
     '''
@@ -8,6 +10,7 @@ def escape_param_value(s):
     and ']' (ABNF %d93) MUST be escaped.
     '''
     return escape_re.sub(r'\\\1', s)
+
 
 def str_or_nil(s):
     '''

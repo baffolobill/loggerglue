@@ -3,10 +3,13 @@
 An rfc5424/rfc5425 syslog server implementation
 Copyright © 2011 Evax Software <contact@evax.fr>
 """
-import socket, ssl
+import socket
+import ssl
+
 
 # Default UDP port to send syslog messages
-SYSLOG_DEFAULT_PORT             = 514
+SYSLOG_DEFAULT_PORT = 514
+
 
 class SyslogEmitter(object):
     """
@@ -32,6 +35,7 @@ class SyslogEmitter(object):
         Emit a log record.
         """
         pass
+
 
 class UDPSyslogEmitter(SyslogEmitter):
     """
@@ -66,7 +70,10 @@ class UDPSyslogEmitter(SyslogEmitter):
         """
         Emit a record.
         """
-        self.socket.sendto(str(msg), self.address)
+        if isinstance(msg, str):
+            msg = msg.encode('utf-8')
+        self.socket.sendto(msg, self.address)
+
 
 class UNIXSyslogEmitter(SyslogEmitter):
     def __init__(self, address='/dev/log'):
@@ -102,18 +109,23 @@ class UNIXSyslogEmitter(SyslogEmitter):
         """
         Emit a record.
         """
+        if isinstance(msg, str):
+            msg = msg.encode('utf-8')
         try:
-            self.socket.send(str(msg)+'\000')
+            self.socket.send(msg+'\0')
         except socket.error:
             self._connect(self.address)
-            self.socket.send(str(msg)+'\000')
+            self.socket.send(msg+'\0')
+
 
 class TCPSyslogEmitter(SyslogEmitter):
     """
     Syslog emitter that sends messages through a TCP socket. Optionally supports TLS.
     """
-    def __init__(self, address=('localhost', SYSLOG_DEFAULT_PORT),\
-        octet_based_framing=True, **ssl_args):
+    def __init__(self, 
+                 address=('localhost', SYSLOG_DEFAULT_PORT),
+                 octet_based_framing=True,
+                 **ssl_args):
         """
         **Arguments**
             *address*
@@ -137,8 +149,11 @@ class TCPSyslogEmitter(SyslogEmitter):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect(address)
         if ssl_args:
-            self.socket = ssl.wrap_socket(self.socket, server_side=False,
-                                   **ssl_args)
+            self.socket = ssl.wrap_socket(
+                self.socket, 
+                server_side=False,
+                **ssl_args
+                )
 
     def close(self):
         """
@@ -152,9 +167,13 @@ class TCPSyslogEmitter(SyslogEmitter):
     def _send(self, msg):
         msg = str(msg)
         if self.octet_based_framing:
-            self.socket.send("%i %s" % (len(msg), msg))
+            self.socket.send(
+                ("%i %s" % (len(msg), msg)).encode('utf-8')
+                )
         else:
-            self.socket.send(msg + '\n')
+            self.socket.send(
+                (msg + '\n').encode('utf-8')
+            )
 
     def emit(self, msg):
         """

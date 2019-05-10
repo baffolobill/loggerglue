@@ -2,6 +2,8 @@ syntax: glob
 
 *.pyc
 *~
+*.sonarlint/*
+*.download_cache/*
 lib/*
 build/*
 dist/*
@@ -12,3 +14,4 @@ bin/*
 doc/_static/*
 doc/_templates/*
 doc/_build/*
+env/*

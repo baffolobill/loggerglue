@@ -1,18 +1,18 @@
 # Unit-testing, docs.
 
-VIRTUALENV?=virtualenv
+VIRTUALENV?=python3 -m venv
 
 all: test flakes pep8
 
 env:
 	mkdir -p .download_cache
 	rm -rf env/
-	$(VIRTUALENV) --clear --no-site-packages env
-	env/bin/pip install --download-cache=.download_cache pyparsing sphinx pyflakes pep8
-	echo ">> Run 'source env/bin/activate'" 
+	$(VIRTUALENV) --clear env
+	env/bin/pip3 install --cache-dir=.download_cache pyparsing sphinx pyflakes pep8
+	@echo ">> Run 'source env/bin/activate'" 
 
 test:
-	env/bin/python -m unittest discover -v
+	env/bin/python3 -m unittest discover -v
 
 doc:
 	cd doc && make html

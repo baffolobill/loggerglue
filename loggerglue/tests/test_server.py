@@ -1,37 +1,52 @@
 """
 Tests for both the Syslog server and emitter.
 """
+import os
+import threading
 import unittest
-from loggerglue.emitter import TCPSyslogEmitter
-from loggerglue.server import SyslogServer,SyslogHandler
-from loggerglue.rfc5424 import SyslogEntry, SDElement
 from datetime import datetime
-import os, threading
 from tempfile import NamedTemporaryFile
+
+from loggerglue.emitter import TCPSyslogEmitter
+from loggerglue.server import SyslogServer, SyslogHandler
+from loggerglue.rfc5424 import SyslogEntry, SDElement
+
 
 def create_test_entry(proto):
     hostname = "test.example.com"
     app_name = "app_name"
-    y = SyslogEntry(
-            prival=165, timestamp=datetime.utcnow(),
-            hostname=hostname, app_name=app_name, procid=os.getpid(), msgid='ID47',
-            structured_data=[SDElement('exampleSDID@32473',
-                [('iut','3'),
-                ('eventSource','Application'),
-                ('eventID','1011'),
-                ('eventID','1012')]
-                )],
-            msg='An application event log entry through '+proto+'...'
+    entry = SyslogEntry(
+        prival=165,
+        timestamp=datetime.utcnow(),
+        hostname=hostname,
+        app_name=app_name,
+        procid=os.getpid(),
+        msgid='ID47',
+        structured_data=[
+            SDElement(
+                'exampleSDID@32473',
+                [
+                    ('iut', '3'),
+                    ('eventSource', 'Application'),
+                    ('eventID', '1011'),
+                    ('eventID', '1012')
+                ]
+            )
+        ],
+        msg='An application event log entry through %s...' % proto
     )
-    return y
+    return entry
+
 
 class Handler(SyslogHandler):
     def handle_entry(self, syslog_entry):
         self.server.entry = syslog_entry
 
+
 def syslog_server_thread(serv):
     """Handle one request"""
     serv.handle_request()
+
 
 # SSL test certificate/key
 key_data = """
@@ -83,8 +98,7 @@ class TestServer(unittest.TestCase):
         serv = SyslogServer(address, Handler)
         serv.entry = None
 
-        thr = threading.Thread(
-            target=syslog_server_thread, args=(serv,))
+        thr = threading.Thread(target=syslog_server_thread, args=(serv,))
         thr.start()
         tm = TCPSyslogEmitter(address, octet_based_framing=False)
         y = create_test_entry('TCP')
@@ -99,21 +113,20 @@ class TestServer(unittest.TestCase):
         address = ('127.0.0.1', 5515)
 
         keyfile = NamedTemporaryFile(delete=False)
-        keyfile.write(key_data)
+        keyfile.write(key_data.encode('utf-8'))
         keyfile.close()
         certfile = NamedTemporaryFile(delete=False)
-        certfile.write(cert_data)
+        certfile.write(cert_data.encode('utf-8'))
         certfile.close()
         serv = SyslogServer(address, Handler,
             keyfile=keyfile.name,
-            certfile=certfile.name)
+            certfile=certfile.name
+            )
         serv.entry = None
 
-        thr = threading.Thread(
-            target=syslog_server_thread, args=(serv,))
+        thr = threading.Thread(target=syslog_server_thread, args=(serv,))
         thr.start()
-        tm = TCPSyslogEmitter(address, octet_based_framing=True,
-                keyfile=None)
+        tm = TCPSyslogEmitter(address, octet_based_framing=True, keyfile=None)
         y = create_test_entry('TCPS')
         tm.emit(y)
         tm.close()
@@ -126,6 +139,6 @@ class TestServer(unittest.TestCase):
 
         self.assertEqual(serv.entry.msg, "An application event log entry through TCPS...")
 
+
 if __name__ == '__main__':
     unittest.main()
-

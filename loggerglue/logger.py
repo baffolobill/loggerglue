@@ -3,11 +3,14 @@
 An rfc5424/rfc5425 syslog server implementation
 Copyright © 2011 Evax Software <contact@evax.fr>
 """
-import socket,os,sys
+import os
+import socket
+import sys
 from datetime import datetime
 
-from loggerglue.rfc5424 import DEFAULT_PRIVAL,SyslogEntry
+from loggerglue.rfc5424 import DEFAULT_PRIVAL, SyslogEntry
 from loggerglue.emitter import UNIXSyslogEmitter
+
 
 class Logger(object):
     """
@@ -77,11 +80,15 @@ class Logger(object):
             timestamp = datetime.utcnow()
 
         msg = SyslogEntry(
-                    prival=prival, timestamp=datetime.utcnow(),
-                    hostname=self.hostname, app_name=self.app_name, procid=self.procid, msgid=msgid,
-                    structured_data=structured_data,
-                    msg=msg
-            )
+            prival=prival, 
+            timestamp=datetime.utcnow(),
+            hostname=self.hostname, 
+            app_name=self.app_name, 
+            procid=self.procid, 
+            msgid=msgid,
+            structured_data=structured_data,
+            msg=msg
+        )
 
         self.emitter.emit(msg)
 
@@ -90,4 +97,3 @@ class Logger(object):
         Close connection to logger.
         """
         self.emitter.close()
-

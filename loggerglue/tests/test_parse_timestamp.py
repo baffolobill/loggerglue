@@ -34,5 +34,6 @@ class TestParseTimestamp(unittest.TestCase):
         for k, v in self.pairs.items():
             self.assertEqual(v, parse_timestamp(k), k)
 
+
 if __name__ == '__main__':
     unittest.main()
